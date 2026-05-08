@@ -1,4 +1,4 @@
-# ⛈️ FlashGuard Lite
+# ⛈️ Climate - Risk - Dashboard
 
 > Near real-time flash rain risk monitor for Indian metro cities.  
 > Built with OpenWeatherMap + rule-based IMD thresholds. No ML needed.
