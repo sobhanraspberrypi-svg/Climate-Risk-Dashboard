@@ -54,12 +54,11 @@ def climate_zone(lat: float) -> str:
     return "polar"
 
 CAPE_CFG = {
-    #               flash_h  flash_m  storm_h  storm_m  cb_h
-    "equatorial":  ( 800,     400,     600,     300,    1500),
-    "tropical":    (1000,     500,     800,     400,    2000),
-    "subtropical": (1500,     800,    1200,     600,    2500),
-    "temperate":   (2000,    1000,    1500,     800,    3000),
-    "polar":       (3000,    2000,    2500,    1500,    4500),
+    "equatorial":  ( 800,  400,  600,  300, 1500),
+    "tropical":    (1000,  500,  800,  400, 2000),
+    "subtropical": (1500,  800, 1200,  600, 2500),
+    "temperate":   (2000, 1000, 1500,  800, 3000),
+    "polar":       (3000, 2000, 2500, 1500, 4500),
 }
 
 def elev_factor(elev: float) -> float:
@@ -78,17 +77,15 @@ def hour_weight(hour: int, lat: float) -> float:
 # ══════════════════════════════════════════════════════════════════
 
 def imd_wind(kmh: float) -> tuple[str, str]:
-    """IMD scale — used when country_code == IN. Returns (label, risk_level)."""
-    if kmh < 15:  return "Light",             "LOW"
-    if kmh < 35:  return "Moderate",          "LOW"
-    if kmh < 50:  return "Fresh",             "MODERATE"
-    if kmh < 62:  return "Strong",            "MODERATE"
-    if kmh < 88:  return "Very Strong ⚠️",    "HIGH"
-    if kmh < 117: return "Storm 🚨",           "HIGH"
-    return             "Violent Storm 🆘",      "HIGH"
+    if kmh < 15:  return "Light",           "LOW"
+    if kmh < 35:  return "Moderate",        "LOW"
+    if kmh < 50:  return "Fresh",           "MODERATE"
+    if kmh < 62:  return "Strong",          "MODERATE"
+    if kmh < 88:  return "Very Strong ⚠️",  "HIGH"
+    if kmh < 117: return "Storm 🚨",         "HIGH"
+    return             "Violent Storm 🆘",    "HIGH"
 
 def beaufort_wind(kmh: float) -> tuple[int, str, str]:
-    """Beaufort scale — international. Returns (number, label, risk_level)."""
     if kmh < 2:   return  0, "Calm",            "LOW"
     if kmh < 6:   return  1, "Light Air",       "LOW"
     if kmh < 12:  return  2, "Light Breeze",    "LOW"
@@ -104,7 +101,7 @@ def beaufort_wind(kmh: float) -> tuple[int, str, str]:
     return              12, "Hurricane Force",   "HIGH"
 
 # ══════════════════════════════════════════════════════════════════
-# AQI (US EPA PM2.5 breakpoints)
+# AQI
 # ══════════════════════════════════════════════════════════════════
 
 def calc_aqi(pm25: float) -> int:
@@ -116,19 +113,18 @@ def calc_aqi(pm25: float) -> int:
     return 500 if pm25 > 500 else 0
 
 def aqi_label(aqi: int) -> tuple[str, str]:
-    if aqi <= 50:  return "Good",                   "#22c55e"
-    if aqi <= 100: return "Moderate",               "#f59e0b"
-    if aqi <= 150: return "Unhealthy (Sensitive)",  "#f97316"
-    if aqi <= 200: return "Unhealthy",              "#ef4444"
-    if aqi <= 300: return "Very Unhealthy",         "#7c3aed"
-    return                "Hazardous",              "#831843"
+    if aqi <= 50:  return "Good",                  "#22c55e"
+    if aqi <= 100: return "Moderate",              "#f59e0b"
+    if aqi <= 150: return "Unhealthy (Sensitive)", "#f97316"
+    if aqi <= 200: return "Unhealthy",             "#ef4444"
+    if aqi <= 300: return "Very Unhealthy",        "#7c3aed"
+    return                "Hazardous",             "#831843"
 
 # ══════════════════════════════════════════════════════════════════
 # WILDFIRE ZONE DETECTOR
 # ══════════════════════════════════════════════════════════════════
 
 def is_wildfire_zone(lat: float, humidity: float, precip: float, zone: str) -> bool:
-    """Detect arid/forest zones from climate characteristics — no city hardcoding."""
     is_arid         = humidity < 35 and precip < 1
     is_mediterr     = zone == "subtropical" and 30 <= abs(lat) <= 45
     is_tropical_dry = zone in ("tropical","equatorial") and humidity < 45
@@ -259,17 +255,13 @@ def fetch_air_quality(lat: float, lon: float) -> dict | None:
 
         pm25 = val("pm2_5")
         return {
-            "pm25":    pm25,
-            "pm10":    val("pm10"),
+            "pm25":    pm25,   "pm10":    val("pm10"),
             "co":      val("carbon_monoxide"),
             "no2":     val("nitrogen_dioxide"),
-            "o3":      val("ozone"),
-            "dust":    val("dust"),
+            "o3":      val("ozone"),   "dust":    val("dust"),
             "uv":      val("uv_index"),
-            "birch":   val("birch_pollen"),
-            "grass":   val("grass_pollen"),
-            "mugwort": val("mugwort_pollen"),
-            "alder":   val("alder_pollen"),
+            "birch":   val("birch_pollen"), "grass":   val("grass_pollen"),
+            "mugwort": val("mugwort_pollen"), "alder":   val("alder_pollen"),
             "aqi":     calc_aqi(pm25),
         }
     except: return None
@@ -356,7 +348,6 @@ def score_cloudburst(om, owm, lat, elev, is_now):
 
 
 def score_snow_hail(om, owm, lat, elev, is_now):
-    """Returns (snow_level, hail_level, snow_flags, hail_flags, wb_temp, frz_level)"""
     temp=om.get("temperature_2m",20) or 20
     hum=om.get("relativehumidity_2m",60) or 60
     pprob=om.get("precipitation_probability",0) or 0
@@ -367,8 +358,6 @@ def score_snow_hail(om, owm, lat, elev, is_now):
     frz=om.get("freezinglevel_height",6000) or 6000
     zone=climate_zone(lat); fh,*_=CAPE_CFG[zone]; ef=elev_factor(elev)
     wb=wet_bulb(temp,hum)
-
-    # Snow
     ss,sf=0,[]
     if wb<=0:    ss+=40; sf.append(f"Wet bulb {wb:.1f}°C ≤ 0°C — snow-favourable")
     elif wb<=1.5:ss+=20; sf.append(f"Wet bulb {wb:.1f}°C — rain/snow mix possible")
@@ -378,8 +367,6 @@ def score_snow_hail(om, owm, lat, elev, is_now):
     elif pprob>30:ss+=10
     if snow_cm>0:ss+=20; sf.append(f"Forecast snowfall {snow_cm:.1f}cm")
     if elev>1500:ss+=10; sf.append(f"High elevation {elev:.0f}m — enhances snow")
-
-    # Hail
     hs,hf=0,[]
     eff_frz=frz-elev
     if cape>fh*ef:      hs+=35; hf.append(f"CAPE {cape:.0f} J/kg — strong updraft")
@@ -393,18 +380,15 @@ def score_snow_hail(om, owm, lat, elev, is_now):
     elif cin<30:hs+=8;  hf.append(f"CIN {cin:.0f} — weakening")
     if is_now and owm and owm["weather_main"]=="Thunderstorm":
         hs+=15; hf.append("Active thunderstorm — hail possible NOW")
-
     return _level(ss,60,30), _level(hs,60,30), sf, hf, wb, frz
 
 
 def score_extreme_wind(om, owm, is_now, country_code):
-    """Returns (level, flags, gusts_kmh)"""
     gusts=om.get("windgusts_10m",0) or 0
     wind=om.get("windspeed_10m",0) or 0
     cape=om.get("cape",0) or 0
     shear=abs((om.get("windspeed_80m",0) or 0)-wind)
     score,flags=0,[]
-
     is_india=(str(country_code)=="IN")
     if is_india:
         label,lvl_raw=imd_wind(gusts)
@@ -412,27 +396,21 @@ def score_extreme_wind(om, owm, is_now, country_code):
     else:
         bnum,label,lvl_raw=beaufort_wind(gusts)
         flags.append(f"Beaufort {bnum}: {label} ({gusts:.0f} km/h)")
-
-    if lvl_raw=="HIGH":     score+=50
+    if lvl_raw=="HIGH":      score+=50
     elif lvl_raw=="MODERATE":score+=25
-
     if gusts>=88:   score+=15; flags.append("⚠️ Extreme gust — structural damage risk")
     elif gusts>=62: score+=10; flags.append("Strong gust — tree/roof damage possible")
-
     if cape>1000 and shear>25:
-        score+=25; flags.append(f"CAPE {cape:.0f} J/kg + shear {shear:.0f} km/h — derecho/squall conditions")
+        score+=25; flags.append(f"CAPE {cape:.0f} J/kg + shear {shear:.0f} km/h — derecho/squall")
     elif cape>500 and shear>15:
         score+=12; flags.append(f"Squall line possible — CAPE {cape:.0f} J/kg")
-
     if is_now and owm:
         obs=owm["wind_ms"]*3.6
         if obs>60: score+=10; flags.append(f"Observed surface wind {obs:.0f} km/h")
-
     return _level(score,60,30), flags, gusts
 
 
 def score_extreme_heat(om, owm, lat, elev, is_now):
-    """Returns (level, flags, temp, feels_like)"""
     temp=om.get("temperature_2m",20) or 20
     feels=om.get("apparent_temperature",20) or 20
     rh=om.get("relativehumidity_2m",60) or 60
@@ -451,7 +429,6 @@ def score_extreme_heat(om, owm, lat, elev, is_now):
 
 
 def score_wildfire(om, lat, humidity, precip, zone, elev):
-    """Returns (level_or_None, flags, components_dict)"""
     if not is_wildfire_zone(lat, humidity, precip, zone):
         return None, [], {}
     temp=om.get("temperature_2m",25) or 25
@@ -470,15 +447,12 @@ def score_wildfire(om, lat, humidity, precip, zone, elev):
     if wind>40:    flags.append(f"Strong wind {wind:.0f} km/h — rapid fire spread risk")
     if sm<0.1:     flags.append("Very dry surface soil — elevated ignition risk")
     return _level(total,60,35), flags, {
-        "Temperature":   round(t_s),
-        "Low Humidity":  round(h_s),
-        "Wind Speed":    round(w_s),
-        "Drought Code":  round(d_s),
+        "Temperature":round(t_s),"Low Humidity":round(h_s),
+        "Wind Speed":round(w_s),"Drought Code":round(d_s),
     }
 
 
 def score_agro_risk(om, lat, elev):
-    """Returns (level, flags, scores_dict)"""
     precip=om.get("precipitation",0) or 0
     sm_s=om.get("soil_moisture_0_to_7cm",0.2) or 0.2
     gusts=om.get("windgusts_10m",0) or 0
@@ -522,7 +496,7 @@ def get_soil_context(om: dict) -> dict:
 
 TRANSPARENT = "rgba(0,0,0,0)"
 
-def chart_wind(raw: dict, is_india: bool) -> go.Figure:
+def chart_wind(raw, is_india):
     fig = go.Figure()
     fig.add_trace(go.Scatter(
         x=raw["t12"], y=raw["gusts_12"], mode="lines+markers",
@@ -530,10 +504,10 @@ def chart_wind(raw: dict, is_india: bool) -> go.Figure:
         fill="tozeroy", fillcolor="rgba(124,58,237,0.1)", name="Gusts km/h"))
     lbl1 = "Very Strong (IMD 62)" if is_india else "Gale (Beaufort 8, 62)"
     lbl2 = "Storm (IMD 88)"        if is_india else "Storm (Beaufort 10, 89)"
-    fig.add_hline(y=62, line_dash="dash", line_color="#f97316",
-                  annotation_text=lbl1, annotation_position="top right")
-    fig.add_hline(y=88, line_dash="dash", line_color="#ef4444",
-                  annotation_text=lbl2, annotation_position="top right")
+    fig.add_hline(y=62,line_dash="dash",line_color="#f97316",
+                  annotation_text=lbl1,annotation_position="top right")
+    fig.add_hline(y=88,line_dash="dash",line_color="#ef4444",
+                  annotation_text=lbl2,annotation_position="top right")
     fig.update_layout(height=250,margin=dict(t=10,b=10,l=10,r=120),
                       yaxis_title="km/h",xaxis_title="Next 12 hours",
                       plot_bgcolor=TRANSPARENT,paper_bgcolor=TRANSPARENT,
@@ -541,7 +515,7 @@ def chart_wind(raw: dict, is_india: bool) -> go.Figure:
     return fig
 
 
-def chart_heat(raw: dict, heat_thresh: int, cold_thresh: int) -> go.Figure:
+def chart_heat(raw, heat_thresh, cold_thresh):
     fig = go.Figure()
     fig.add_trace(go.Scatter(x=raw["t24"],y=raw["temp_24"],name="Temperature °C",
                              line=dict(color="#ef4444",width=2.5)))
@@ -558,54 +532,50 @@ def chart_heat(raw: dict, heat_thresh: int, cold_thresh: int) -> go.Figure:
     return fig
 
 
-def chart_air_quality(aq: dict) -> go.Figure:
+def chart_air_quality(aq):
     who  = {"PM2.5":15,"PM10":45,"NO₂":200,"O₃":100,"Dust":50}
     vals = [aq["pm25"],aq["pm10"],aq["no2"],aq["o3"],aq["dust"]]
     pcts = [min(250,v/w*100) for v,w in zip(vals,who.values())]
     cols = ["#ef4444" if p>100 else "#f59e0b" if p>60 else "#22c55e" for p in pcts]
     fig  = go.Figure(go.Bar(
-        x=list(who.keys()), y=pcts, marker_color=cols,
-        text=[f"{v:.1f} µg/m³" for v in vals], textposition="outside"))
-    fig.add_hline(y=100,line_dash="dash",line_color="#ef4444",
-                  annotation_text="WHO Limit")
+        x=list(who.keys()),y=pcts,marker_color=cols,
+        text=[f"{v:.1f} µg/m³" for v in vals],textposition="outside"))
+    fig.add_hline(y=100,line_dash="dash",line_color="#ef4444",annotation_text="WHO Limit")
     fig.update_layout(height=270,margin=dict(t=30,b=10,l=10,r=10),
                       yaxis_title="% of WHO Guideline",yaxis_range=[0,270],
                       plot_bgcolor=TRANSPARENT,paper_bgcolor=TRANSPARENT)
     return fig
 
 
-def chart_wildfire(comp: dict) -> go.Figure:
+def chart_wildfire(comp):
     maxes={"Temperature":40,"Low Humidity":30,"Wind Speed":20,"Drought Code":10}
     fig=go.Figure(go.Bar(
-        x=list(comp.keys()), y=list(comp.values()),
+        x=list(comp.keys()),y=list(comp.values()),
         marker_color=["#ef4444","#f97316","#7c3aed","#92400e"],
-        text=[f"{v}/{maxes[k]}" for k,v in comp.items()],
-        textposition="outside"))
+        text=[f"{v}/{maxes[k]}" for k,v in comp.items()],textposition="outside"))
     fig.update_layout(height=250,margin=dict(t=20,b=10,l=10,r=10),
                       yaxis_title="Score",yaxis_range=[0,45],
                       plot_bgcolor=TRANSPARENT,paper_bgcolor=TRANSPARENT)
     return fig
 
 
-def chart_agro_radar(scores: dict) -> go.Figure:
+def chart_agro_radar(scores):
     cats=list(scores.keys())+[list(scores.keys())[0]]
     vals=list(scores.values())+[list(scores.values())[0]]
     fig=go.Figure(go.Scatterpolar(
         r=vals,theta=cats,fill="toself",
         line_color="#16a34a",fillcolor="rgba(22,163,74,0.2)"))
     fig.update_layout(
-        polar=dict(radialaxis=dict(visible=True,range=[0,100],
-                                   tickvals=[25,50,75,100])),
-        height=300,margin=dict(t=20,b=20,l=40,r=40),
-        paper_bgcolor=TRANSPARENT)
+        polar=dict(radialaxis=dict(visible=True,range=[0,100],tickvals=[25,50,75,100])),
+        height=300,margin=dict(t=20,b=20,l=40,r=40),paper_bgcolor=TRANSPARENT)
     return fig
 
 
-def chart_soil_gauge(value: float, title: str) -> go.Figure:
+def chart_soil_gauge(value, title):
     color=("#ef4444" if value>0.42 else "#3b82f6" if value>0.30
            else "#22c55e" if value>0.15 else "#f59e0b")
     fig=go.Figure(go.Indicator(
-        mode="gauge+number", value=round(value,3),
+        mode="gauge+number",value=round(value,3),
         title={"text":title,"font":{"size":13}},
         number={"suffix":" m³/m³","font":{"size":14}},
         gauge={"axis":{"range":[0,0.5],"tickwidth":1},
@@ -623,12 +593,12 @@ def chart_soil_gauge(value: float, title: str) -> go.Figure:
 # UI HELPERS
 # ══════════════════════════════════════════════════════════════════
 
-def risk_badge(level: str) -> str:
+def risk_badge(level):
     return (f'<span style="background:{RISK_BG[level]};color:{RISK_TEXT[level]};'
             f'border-radius:20px;padding:3px 14px;font-weight:700;font-size:13px;">'
             f'{RISK_EMOJI[level]} {level}</span>')
 
-def time_card(title: str, level: str, flags: list, extra: str="") -> str:
+def time_card(title, level, flags, extra=""):
     c=RISK_COLOR[level]
     fh="".join(f'<div style="font-size:12px;margin-top:3px;">⚡ {f}</div>' for f in flags) \
        or '<div style="font-size:12px;color:#6b7280;margin-top:3px;">✅ No triggers</div>'
@@ -637,10 +607,9 @@ def time_card(title: str, level: str, flags: list, extra: str="") -> str:
             f'padding:14px 16px;height:100%;box-shadow:0 2px 8px {c}22;">'
             f'<div style="font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;'
             f'letter-spacing:.06em;margin-bottom:6px;">{title}</div>'
-            f'<div style="margin-bottom:8px;">{risk_badge(level)}</div>'
-            f'{fh}{ex}</div>')
+            f'<div style="margin-bottom:8px;">{risk_badge(level)}</div>{fh}{ex}</div>')
 
-def section_header(icon: str, title: str, subtitle: str, color: str):
+def section_header(icon, title, subtitle, color):
     st.markdown(
         f'<div style="background:linear-gradient(90deg,{color}22,transparent);'
         f'border-left:4px solid {color};border-radius:8px;padding:12px 18px;margin:1rem 0 0.8rem;">'
@@ -648,7 +617,7 @@ def section_header(icon: str, title: str, subtitle: str, color: str):
         f'<div style="font-size:12px;color:#6b7280;margin-top:2px;">{subtitle}</div></div>',
         unsafe_allow_html=True)
 
-def group_header(label: str, color: str):
+def group_header(label, color):
     st.markdown(
         f'<div style="font-size:15px;font-weight:800;color:{color};padding:8px 0 4px;'
         f'border-bottom:2px solid {color};margin:1.4rem 0 8px;">{label}</div>',
@@ -665,12 +634,13 @@ st.markdown("""<style>
   .stTabs [data-baseweb="tab"]{font-size:13px;font-weight:600;padding:8px 14px;}
 </style>""", unsafe_allow_html=True)
 
+# ── CHANGE 1: Odia subtitle ── ବାତାବରଣ ଦୃଷ୍ଟି
 st.markdown("""
 <div style="background:linear-gradient(135deg,#0f172a,#1e3a5f,#0c4a6e);
             border-radius:16px;padding:24px 32px;margin-bottom:1.2rem;color:white;">
   <div style="font-size:26px;font-weight:800;letter-spacing:-0.5px;">
     🌦️ Vatavaram Drusti
-    <span style="font-size:14px;opacity:0.65;font-weight:400;margin-left:8px;">వాతావరణ దృష్టి</span>
+    <span style="font-size:14px;opacity:0.65;font-weight:400;margin-left:8px;">ବାତାବରଣ ଦୃଷ୍ଟି</span>
   </div>
   <div style="font-size:13px;opacity:0.8;margin-top:4px;">
     Full-spectrum atmospheric hazard monitor — any city worldwide
@@ -700,8 +670,9 @@ with c4:
     st.markdown("<br>",unsafe_allow_html=True)
     search=st.button("🔍 Search",use_container_width=True)
 
-if "locations" not in st.session_state:
-    st.session_state.locations=[]
+# ── CHANGE 2: single city — stores only one location at a time ─────
+if "location" not in st.session_state:
+    st.session_state.location = None
 
 if search:
     if not city_in.strip():
@@ -714,35 +685,37 @@ if search:
         else:
             loc=geo[0]; state=loc.get("state","") or ""
             label=f"{loc['name']}{', '+state if state else ''}, {cname}"
-            if any(abs(l["lat"]-loc["lat"])<0.05 for l in st.session_state.locations):
-                st.info(f"{label} already on map.")
+            with st.spinner("Fetching weather & air quality..."):
+                owm=fetch_owm(loc["lat"],loc["lon"])
+                om =fetch_openmeteo(loc["lat"],loc["lon"])
+                aq =fetch_air_quality(loc["lat"],loc["lon"])
+            if owm and om:
+                # Always replace — new city overwrites the previous one
+                st.session_state.location = {
+                    "label": label,
+                    "lat":   loc["lat"],
+                    "lon":   loc["lon"],
+                    "cc":    loc.get("country", ccode),
+                    "owm":   owm,
+                    "om":    om,
+                    "aq":    aq or {},
+                }
+                st.success(f"Showing data for **{label}**")
             else:
-                with st.spinner("Fetching weather & air quality..."):
-                    owm=fetch_owm(loc["lat"],loc["lon"])
-                    om =fetch_openmeteo(loc["lat"],loc["lon"])
-                    aq =fetch_air_quality(loc["lat"],loc["lon"])
-                if owm and om:
-                    st.session_state.locations.append({
-                        "label": label, "lat": loc["lat"], "lon": loc["lon"],
-                        "cc": loc.get("country", ccode),
-                        "owm": owm, "om": om, "aq": aq or {},
-                    })
-                    st.success(f"Added **{label}**")
-                else:
-                    st.error("Data fetch failed. Check API key or try again.")
+                st.error("Data fetch failed. Check API key or try again.")
 
-if st.session_state.locations:
-    if st.button("🗑️ Clear all"):
-        st.session_state.locations=[]; st.rerun()
+if st.session_state.location:
+    if st.button("🗑️ Clear"):
+        st.session_state.location = None; st.rerun()
 
 st.divider()
 
 # ══════════════════════════════════════════════════════════════════
-# MAIN DISPLAY
+# MAIN DISPLAY — single city only
 # ══════════════════════════════════════════════════════════════════
-locs=st.session_state.locations
+loc = st.session_state.location
 
-if not locs:
+if not loc:
     st.markdown("""
     <div style="text-align:center;padding:3rem 1rem;color:#6b7280;">
       <div style="font-size:52px;">🌤️</div>
@@ -750,311 +723,282 @@ if not locs:
       <div style="font-size:13px;margin-top:6px;">Storm · Flash Rain · Cloudburst · Snow · Hail · Wind · Heat · Air Quality · Wildfire · Agro · Soil</div>
     </div>""", unsafe_allow_html=True)
 else:
+    ow=loc["owm"]; om=loc["om"]; aq=loc["aq"]
+    elev=om["elevation"]; lat=loc["lat"]; zone=climate_zone(lat)
+    is_india=(str(loc.get("cc",""))=="IN")
+
     # ── Map + current conditions ───────────────────────────────────
     mc,ic=st.columns([3,2])
     with mc:
         st.markdown("#### 🗺️ Live Risk Map")
-        alat=sum(l["lat"] for l in locs)/len(locs)
-        alon=sum(l["lon"] for l in locs)/len(locs)
-        m=folium.Map(location=[alat,alon],zoom_start=5 if len(locs)==1 else 3,
-                     tiles="CartoDB positron")
+        m=folium.Map(location=[lat,loc["lon"]],zoom_start=9,tiles="CartoDB positron")
+        lvl,_=score_flash_rain(om["now"],ow,lat,elev,True)
         cm={"HIGH":"red","MODERATE":"orange","LOW":"green"}
-        for loc in locs:
-            lvl,_=score_flash_rain(loc["om"]["now"],loc["owm"],loc["lat"],loc["om"]["elevation"],True)
-            ow=loc["owm"]; ov=loc["om"]["now"]
-            folium.CircleMarker(
-                location=[loc["lat"],loc["lon"]],radius=22,
-                color=cm[lvl],fill=True,fill_opacity=0.65,
-                popup=folium.Popup(
-                    f"<b>{loc['label']}</b><br>Flash Rain: <b>{lvl}</b><br>"
-                    f"🌡 {ow['temp_c']}°C  💧 {ow['humidity_pct']}%<br>"
-                    f"CAPE: {ov.get('cape',0):.0f} J/kg  Gusts: {ov.get('windgusts_10m',0):.0f} km/h",
-                    max_width=210),
-                tooltip=f"{loc['label']} — {lvl}",
-            ).add_to(m)
+        ov=om["now"]
+        folium.CircleMarker(
+            location=[lat,loc["lon"]],radius=22,
+            color=cm[lvl],fill=True,fill_opacity=0.65,
+            popup=folium.Popup(
+                f"<b>{loc['label']}</b><br>Flash Rain: <b>{lvl}</b><br>"
+                f"🌡 {ow['temp_c']}°C  💧 {ow['humidity_pct']}%<br>"
+                f"CAPE: {ov.get('cape',0):.0f} J/kg  Gusts: {ov.get('windgusts_10m',0):.0f} km/h",
+                max_width=210),
+            tooltip=f"{loc['label']} — {lvl}",
+        ).add_to(m)
         st_folium(m,width=None,height=410)
 
     with ic:
-        st.markdown("#### 📊 Current Conditions")
-        for loc in locs:
-            ow=loc["owm"]; ov=loc["om"]
-            with st.container(border=True):
-                st.markdown(f"**{loc['label']}**  ·  {ow['weather_desc']}")
-                a,b,c=st.columns(3)
-                a.metric("Temp",     f"{ow['temp_c']}°C")
-                b.metric("Humidity", f"{ow['humidity_pct']}%")
-                c.metric("Rain",     f"{ow['rain_1h']} mm/hr")
-                d,e,f=st.columns(3)
-                d.metric("CAPE",     f"{ov['now'].get('cape',0):.0f} J/kg")
-                e.metric("LI",       f"{ov['now'].get('lifted_index',0):.1f}")
-                f.metric("Gusts",    f"{ov['now'].get('windgusts_10m',0):.0f} km/h")
-                z=climate_zone(loc["lat"])
-                st.caption(f"🌍 {z.title()} · {ov['elevation']:.0f}m · "
-                           f"{loc['lat']:.2f}°, {loc['lon']:.2f}°")
+        st.markdown(f"#### 📊 {loc['label']}")
+        st.markdown(f"**{ow['weather_desc']}**")
+        a,b,c=st.columns(3)
+        a.metric("Temp",     f"{ow['temp_c']}°C")
+        b.metric("Humidity", f"{ow['humidity_pct']}%")
+        c.metric("Rain",     f"{ow['rain_1h']} mm/hr")
+        d,e,f=st.columns(3)
+        d.metric("CAPE",     f"{om['now'].get('cape',0):.0f} J/kg")
+        e.metric("LI",       f"{om['now'].get('lifted_index',0):.1f}")
+        f.metric("Gusts",    f"{om['now'].get('windgusts_10m',0):.0f} km/h")
+        g,h,i=st.columns(3)
+        g.metric("Pressure", f"{ow['pressure_hpa']} hPa")
+        h.metric("Cloud",    f"{ow['cloud_pct']}%")
+        i.metric("Wind",     f"{ow['wind_ms']} m/s")
+        st.caption(f"🌍 {zone.title()} · {elev:.0f}m elevation · "
+                   f"{lat:.2f}°, {loc['lon']:.2f}° · "
+                   f"Updated: {datetime.now().strftime('%H:%M')}")
 
     st.divider()
 
-    # ── Per-location hazard panels ─────────────────────────────────
-    for loc in locs:
-        st.markdown(f"### 📍 {loc['label']}")
-        ow=loc["owm"]; om=loc["om"]; aq=loc["aq"]
-        elev=om["elevation"]; lat=loc["lat"]; zone=climate_zone(lat)
-        is_india=(str(loc.get("cc",""))=="IN")
+    # ══════════════════════════════════════════════════════════════
+    # WEATHER INFO
+    # ══════════════════════════════════════════════════════════════
+    group_header("🌦 Weather Info", "#1e40af")
+    w1,w2,w3,w4,w5,w6=st.tabs([
+        "🌧 Storm Rainfall","⛈️ Flash Rain","💥 Cloudburst",
+        "❄️🧊 Snow & Hail","💨 Extreme Wind","🌡 Extreme Heat",
+    ])
 
-        # ══════════════════════════════════════════════════════════
-        # WEATHER INFO
-        # ══════════════════════════════════════════════════════════
-        group_header("🌦 Weather Info", "#1e40af")
-        w1,w2,w3,w4,w5,w6=st.tabs([
-            "🌧 Storm Rainfall","⛈️ Flash Rain","💥 Cloudburst",
-            "❄️🧊 Snow & Hail","💨 Extreme Wind","🌡 Extreme Heat",
-        ])
+    with w1:
+        section_header("🌧","Storm Rainfall",
+                       "Sustained heavy rain · IMD >64.5mm/24hr · 6–12hr forecast","#3b82f6")
+        ln,fn=score_storm_rainfall(om["now"],ow,lat,elev,True)
+        l6,f6=score_storm_rainfall(om["h6"],None,lat,elev,False)
+        l12,f12=score_storm_rainfall(om["h12"],None,lat,elev,False)
+        a,b,c=st.columns(3)
+        with a: st.markdown(time_card("🕐 Current",ln,fn,
+            f"Precip prob: {om['now'].get('precipitation_probability',0)}%"),unsafe_allow_html=True)
+        with b: st.markdown(time_card("🕕 +6 Hours",l6,f6,
+            f"Precip prob: {om['h6'].get('precipitation_probability',0)}%"),unsafe_allow_html=True)
+        with c: st.markdown(time_card("🕛 +12 Hours",l12,f12,
+            f"Precip prob: {om['h12'].get('precipitation_probability',0)}%"),unsafe_allow_html=True)
 
-        # Storm Rainfall
-        with w1:
-            section_header("🌧","Storm Rainfall",
-                           "Sustained heavy rain · IMD >64.5mm/24hr · 6–12hr forecast","#3b82f6")
-            ln,fn=score_storm_rainfall(om["now"],ow,lat,elev,True)
-            l6,f6=score_storm_rainfall(om["h6"],None,lat,elev,False)
-            l12,f12=score_storm_rainfall(om["h12"],None,lat,elev,False)
-            a,b,c=st.columns(3)
-            with a: st.markdown(time_card("🕐 Current",ln,fn,
-                f"Precip prob: {om['now'].get('precipitation_probability',0)}%"),unsafe_allow_html=True)
-            with b: st.markdown(time_card("🕕 +6 Hours",l6,f6,
-                f"Precip prob: {om['h6'].get('precipitation_probability',0)}%"),unsafe_allow_html=True)
-            with c: st.markdown(time_card("🕛 +12 Hours",l12,f12,
-                f"Precip prob: {om['h12'].get('precipitation_probability',0)}%"),unsafe_allow_html=True)
+    with w2:
+        section_header("⛈️","Flash Rain",
+                       "Intense burst · IMD >50mm/1–2hr · CAPE + Lifted Index nowcast","#f97316")
+        ln,fn=score_flash_rain(om["now"],ow,lat,elev,True)
+        l2,f2=score_flash_rain(om["h2"],None,lat,elev,False)
+        l6,f6=score_flash_rain(om["h6"],None,lat,elev,False)
+        a,b,c=st.columns(3)
+        with a: st.markdown(time_card("🕐 Current",ln,fn,
+            f"CAPE: {om['now'].get('cape',0):.0f} J/kg · LI: {om['now'].get('lifted_index',0):.1f}"),unsafe_allow_html=True)
+        with b: st.markdown(time_card("🕑 +2 Hours",l2,f2,
+            f"CAPE: {om['h2'].get('cape',0):.0f} J/kg"),unsafe_allow_html=True)
+        with c: st.markdown(time_card("🕕 +6 Hours",l6,f6,
+            f"CAPE: {om['h6'].get('cape',0):.0f} J/kg"),unsafe_allow_html=True)
+        fh,fm,*_=CAPE_CFG[zone]; ef=elev_factor(elev)
+        st.info(f"🧠 Climate zone: **{zone.title()}** · Elevation: **{elev:.0f}m** · "
+                f"CAPE HIGH threshold: **{fh*ef:.0f} J/kg** · MODERATE: **{fm*ef:.0f} J/kg**")
 
-        # Flash Rain
-        with w2:
-            section_header("⛈️","Flash Rain",
-                           "Intense burst · IMD >50mm/1–2hr · CAPE + Lifted Index nowcast","#f97316")
-            ln,fn=score_flash_rain(om["now"],ow,lat,elev,True)
-            l2,f2=score_flash_rain(om["h2"],None,lat,elev,False)
-            l6,f6=score_flash_rain(om["h6"],None,lat,elev,False)
-            a,b,c=st.columns(3)
-            with a: st.markdown(time_card("🕐 Current",ln,fn,
-                f"CAPE: {om['now'].get('cape',0):.0f} J/kg · LI: {om['now'].get('lifted_index',0):.1f}"),unsafe_allow_html=True)
-            with b: st.markdown(time_card("🕑 +2 Hours",l2,f2,
-                f"CAPE: {om['h2'].get('cape',0):.0f} J/kg"),unsafe_allow_html=True)
-            with c: st.markdown(time_card("🕕 +6 Hours",l6,f6,
-                f"CAPE: {om['h6'].get('cape',0):.0f} J/kg"),unsafe_allow_html=True)
-            fh,fm,*_=CAPE_CFG[zone]; ef=elev_factor(elev)
-            st.info(f"🧠 Climate zone: **{zone.title()}** · Elevation: **{elev:.0f}m** · "
-                    f"CAPE HIGH threshold: **{fh*ef:.0f} J/kg** · MODERATE: **{fm*ef:.0f} J/kg**")
+    with w3:
+        section_header("💥","Cloudburst",
+                       "Extreme · IMD 100mm+/hr · Conditions flagged — needs Doppler radar for precision","#dc2626")
+        ln,fn=score_cloudburst(om["now"],ow,lat,elev,True)
+        l3,f3=score_cloudburst(om["h30min"],None,lat,elev,False)
+        a,b=st.columns(2)
+        with a: st.markdown(time_card("🕐 Current",ln,fn,
+            f"CAPE: {om['now'].get('cape',0):.0f} J/kg · CIN: {abs(om['now'].get('convective_inhibition',0) or 0):.0f} J/kg"),unsafe_allow_html=True)
+        with b: st.markdown(time_card("⏱️ ~30 Min",l3,f3,"Interpolated from hourly data"),unsafe_allow_html=True)
+        st.warning("⚠️ Cloudburst prediction requires Doppler radar. This panel flags dangerous atmospheric setups only.")
 
-        # Cloudburst
-        with w3:
-            section_header("💥","Cloudburst",
-                           "Extreme · IMD 100mm+/hr · Conditions flagged — needs Doppler radar for precision","#dc2626")
-            ln,fn=score_cloudburst(om["now"],ow,lat,elev,True)
-            l3,f3=score_cloudburst(om["h30min"],None,lat,elev,False)
-            a,b=st.columns(2)
-            with a: st.markdown(time_card("🕐 Current",ln,fn,
-                f"CAPE: {om['now'].get('cape',0):.0f} J/kg · CIN: {abs(om['now'].get('convective_inhibition',0) or 0):.0f} J/kg"),unsafe_allow_html=True)
-            with b: st.markdown(time_card("⏱️ ~30 Min",l3,f3,
-                "Interpolated from hourly data"),unsafe_allow_html=True)
-            st.warning("⚠️ Cloudburst prediction requires Doppler radar. This panel flags dangerous atmospheric setups only.")
+    with w4:
+        section_header("❄️🧊","Snow & Hail",
+                       "Snow: Stull wet bulb ≤0°C + precip · Hail: CAPE + effective freezing level + shear","#6366f1")
+        sn0,hn0,sf0,hf0,wb0,fz0=score_snow_hail(om["now"],ow,lat,elev,True)
+        sn2,hn2,sf2,hf2,wb2,fz2=score_snow_hail(om["h2"],None,lat,elev,False)
+        sn6,hn6,sf6,hf6,wb6,fz6=score_snow_hail(om["h6"],None,lat,elev,False)
+        st.markdown('<div style="font-size:13px;font-weight:700;color:#6366f1;margin:4px 0 6px;">❄️ Snow Risk</div>',unsafe_allow_html=True)
+        a,b,c=st.columns(3)
+        with a: st.markdown(time_card("🕐 Current",sn0,sf0,f"Wet bulb: {wb0:.1f}°C"),unsafe_allow_html=True)
+        with b: st.markdown(time_card("🕑 +3 Hours",sn2,sf2,f"Wet bulb: {wb2:.1f}°C"),unsafe_allow_html=True)
+        with c: st.markdown(time_card("🕕 +6 Hours",sn6,sf6,f"Wet bulb: {wb6:.1f}°C"),unsafe_allow_html=True)
+        st.markdown('<div style="font-size:13px;font-weight:700;color:#0891b2;margin:10px 0 6px;">🧊 Hail Risk</div>',unsafe_allow_html=True)
+        d,e,f=st.columns(3)
+        with d: st.markdown(time_card("🕐 Current",hn0,hf0,f"Freezing level: {fz0:.0f}m"),unsafe_allow_html=True)
+        with e: st.markdown(time_card("🕑 +3 Hours",hn2,hf2,f"Freezing level: {fz2:.0f}m"),unsafe_allow_html=True)
+        with f: st.markdown(time_card("🕕 +6 Hours",hn6,hf6,f"Freezing level: {fz6:.0f}m"),unsafe_allow_html=True)
+        st.info(f"🧠 Elevation: {elev:.0f}m · Effective freezing level above ground: {fz0-elev:.0f}m · "
+                f"Wet bulb now: {wb0:.1f}°C · Snow needs wet bulb ≤ 0°C")
+        if abs(lat)<20:
+            st.warning("🌴 Tropical location — snow is climatologically rare except above 3000m elevation.")
 
-        # Snow & Hail
-        with w4:
-            section_header("❄️🧊","Snow & Hail",
-                           "Snow: Stull wet bulb ≤0°C + precip · Hail: CAPE + effective freezing level + shear","#6366f1")
-            sn0,hn0,sf0,hf0,wb0,fz0=score_snow_hail(om["now"],ow,lat,elev,True)
-            sn2,hn2,sf2,hf2,wb2,fz2=score_snow_hail(om["h2"],None,lat,elev,False)
-            sn6,hn6,sf6,hf6,wb6,fz6=score_snow_hail(om["h6"],None,lat,elev,False)
-            st.markdown('<div style="font-size:13px;font-weight:700;color:#6366f1;margin:4px 0 6px;">❄️ Snow Risk</div>',unsafe_allow_html=True)
-            a,b,c=st.columns(3)
-            with a: st.markdown(time_card("🕐 Current",sn0,sf0,f"Wet bulb: {wb0:.1f}°C"),unsafe_allow_html=True)
-            with b: st.markdown(time_card("🕑 +3 Hours",sn2,sf2,f"Wet bulb: {wb2:.1f}°C"),unsafe_allow_html=True)
-            with c: st.markdown(time_card("🕕 +6 Hours",sn6,sf6,f"Wet bulb: {wb6:.1f}°C"),unsafe_allow_html=True)
-            st.markdown('<div style="font-size:13px;font-weight:700;color:#0891b2;margin:10px 0 6px;">🧊 Hail Risk</div>',unsafe_allow_html=True)
-            d,e,f=st.columns(3)
-            with d: st.markdown(time_card("🕐 Current",hn0,hf0,f"Freezing level: {fz0:.0f}m"),unsafe_allow_html=True)
-            with e: st.markdown(time_card("🕑 +3 Hours",hn2,hf2,f"Freezing level: {fz2:.0f}m"),unsafe_allow_html=True)
-            with f: st.markdown(time_card("🕕 +6 Hours",hn6,hf6,f"Freezing level: {fz6:.0f}m"),unsafe_allow_html=True)
-            ef2=elev_factor(elev)
-            st.info(f"🧠 Elevation: {elev:.0f}m · Effective freezing level above ground now: {fz0-elev:.0f}m · "
-                    f"Wet bulb now: {wb0:.1f}°C · Snow needs wet bulb ≤ 0°C")
-            if abs(lat)<20:
-                st.warning("🌴 Tropical location — snow is climatologically rare except above 3000m elevation.")
+    with w5:
+        scale=("IMD scale — India" if is_india else "Beaufort scale — International")
+        section_header("💨","Extreme Wind",
+                       f"Gust nowcast · Derecho/squall detection · {scale}","#7c3aed")
+        ln,fn,g0=score_extreme_wind(om["now"],ow,True,loc.get("cc",""))
+        l3,f3,g3=score_extreme_wind(om["h2"],None,False,loc.get("cc",""))
+        l6,f6,g6=score_extreme_wind(om["h6"],None,False,loc.get("cc",""))
+        a,b,c=st.columns(3)
+        with a: st.markdown(time_card("🕐 Current",ln,fn,f"Gust: {g0:.0f} km/h"),unsafe_allow_html=True)
+        with b: st.markdown(time_card("🕑 +3 Hours",l3,f3,f"Gust: {g3:.0f} km/h"),unsafe_allow_html=True)
+        with c: st.markdown(time_card("🕕 +6 Hours",l6,f6,f"Gust: {g6:.0f} km/h"),unsafe_allow_html=True)
+        st.markdown("**12-Hour Wind Gust Forecast**")
+        st.plotly_chart(chart_wind(om["raw"],is_india),use_container_width=True)
+        st.caption("⚡ Bareilly-type squall events flagged when CAPE >1000 J/kg + wind shear >25 km/h simultaneously")
 
-        # Extreme Wind
-        with w5:
-            scale=("IMD scale — India" if is_india else "Beaufort scale — International")
-            section_header("💨","Extreme Wind",
-                           f"Gust nowcast · Derecho/squall detection · {scale}","#7c3aed")
-            ln,fn,g0=score_extreme_wind(om["now"],ow,True,loc.get("cc",""))
-            l3,f3,g3=score_extreme_wind(om["h2"],None,False,loc.get("cc",""))
-            l6,f6,g6=score_extreme_wind(om["h6"],None,False,loc.get("cc",""))
-            a,b,c=st.columns(3)
-            with a: st.markdown(time_card("🕐 Current",ln,fn,f"Gust: {g0:.0f} km/h"),unsafe_allow_html=True)
-            with b: st.markdown(time_card("🕑 +3 Hours",l3,f3,f"Gust: {g3:.0f} km/h"),unsafe_allow_html=True)
-            with c: st.markdown(time_card("🕕 +6 Hours",l6,f6,f"Gust: {g6:.0f} km/h"),unsafe_allow_html=True)
-            st.markdown("**12-Hour Wind Gust Forecast**")
-            st.plotly_chart(chart_wind(om["raw"],is_india),use_container_width=True)
-            st.caption("⚡ Bareilly-type squall events flagged when CAPE >1000 J/kg + wind shear >25 km/h simultaneously")
+    with w6:
+        ht=30 if elev>800 else 40; ct=5 if elev>800 else 10
+        section_header("🌡","Extreme Heat / Cold Wave",
+                       "IMD heat wave >40°C plains / >30°C hills · Cold wave <10°C plains / <5°C hills","#f59e0b")
+        ln,fn,t0,fl0=score_extreme_heat(om["now"],ow,lat,elev,True)
+        l6,f6,t6,fl6=score_extreme_heat(om["h6"],None,lat,elev,False)
+        l12,f12,t12,fl12=score_extreme_heat(om["h12"],None,lat,elev,False)
+        a,b,c=st.columns(3)
+        with a: st.markdown(time_card("🕐 Current",ln,fn,f"Temp: {t0}°C · Feels: {fl0}°C"),unsafe_allow_html=True)
+        with b: st.markdown(time_card("🕕 +6 Hours",l6,f6,f"Temp: {t6}°C · Feels: {fl6}°C"),unsafe_allow_html=True)
+        with c: st.markdown(time_card("🕛 +12 Hours",l12,f12,f"Temp: {t12}°C · Feels: {fl12}°C"),unsafe_allow_html=True)
+        st.markdown("**24-Hour Temperature Forecast**")
+        st.plotly_chart(chart_heat(om["raw"],ht,ct),use_container_width=True)
 
-        # Extreme Heat
-        with w6:
-            ht=30 if elev>800 else 40; ct=5 if elev>800 else 10
-            section_header("🌡","Extreme Heat / Cold Wave",
-                           "IMD heat wave >40°C plains / >30°C hills · Cold wave <10°C plains / <5°C hills","#f59e0b")
-            ln,fn,t0,fl0=score_extreme_heat(om["now"],ow,lat,elev,True)
-            l6,f6,t6,fl6=score_extreme_heat(om["h6"],None,lat,elev,False)
-            l12,f12,t12,fl12=score_extreme_heat(om["h12"],None,lat,elev,False)
-            a,b,c=st.columns(3)
-            with a: st.markdown(time_card("🕐 Current",ln,fn,f"Temp: {t0}°C · Feels: {fl0}°C"),unsafe_allow_html=True)
-            with b: st.markdown(time_card("🕕 +6 Hours",l6,f6,f"Temp: {t6}°C · Feels: {fl6}°C"),unsafe_allow_html=True)
-            with c: st.markdown(time_card("🕛 +12 Hours",l12,f12,f"Temp: {t12}°C · Feels: {fl12}°C"),unsafe_allow_html=True)
-            st.markdown("**24-Hour Temperature Forecast**")
-            st.plotly_chart(chart_heat(om["raw"],ht,ct),use_container_width=True)
+    # ══════════════════════════════════════════════════════════════
+    # CLIMATE INTELLIGENCE
+    # ══════════════════════════════════════════════════════════════
+    group_header("🌍 Climate Intelligence", "#065f46")
+    c1t,c2t,c3t,c4t=st.tabs([
+        "💨 Air Quality","🔥 Wildfire","🌾 Agro Risk","💧 Soil & Drought",
+    ])
 
-        # ══════════════════════════════════════════════════════════
-        # CLIMATE INTELLIGENCE
-        # ══════════════════════════════════════════════════════════
-        group_header("🌍 Climate Intelligence", "#065f46")
-        c1t,c2t,c3t,c4t=st.tabs([
-            "💨 Air Quality","🔥 Wildfire","🌾 Agro Risk","💧 Soil & Drought",
-        ])
+    with c1t:
+        section_header("💨","Air Quality",
+                       "PM2.5 · PM10 · NO₂ · O₃ · CO · Dust · UV · Pollen (4 types) — Open-Meteo AQ API","#0891b2")
+        if not aq:
+            st.info("Air quality data unavailable for this location.")
+        else:
+            aqi_v=aq["aqi"]; albl,acol=aqi_label(aqi_v)
+            abg=("#fee2e2" if aqi_v>150 else "#fef3c7" if aqi_v>50 else "#dcfce7")
+            a,b,c,d=st.columns(4)
+            a.markdown(f'<div style="background:{abg};border-radius:10px;padding:12px;text-align:center;">'
+                       f'<div style="font-size:11px;color:#6b7280;">AQI (PM2.5 based)</div>'
+                       f'<div style="font-size:30px;font-weight:700;color:{acol}">{aqi_v}</div>'
+                       f'<div style="font-size:12px;color:{acol}">{albl}</div></div>',unsafe_allow_html=True)
+            b.metric("UV Index", f"{aq['uv']:.1f}",
+                     help="<3 Low · 3-5 Moderate · 6-7 High · 8-10 Very High · 11+ Extreme")
+            c.metric("Dust",     f"{aq['dust']:.1f} µg/m³")
+            d.metric("CO",       f"{aq['co']:.0f} µg/m³",help="WHO 1hr: 30,000 µg/m³")
+            st.markdown("**Pollutants vs WHO Guidelines**")
+            st.plotly_chart(chart_air_quality(aq),use_container_width=True)
+            st.markdown("**Detailed Readings**")
+            r1,r2,r3,r4=st.columns(4)
+            r1.metric("PM2.5", f"{aq['pm25']:.1f} µg/m³",help="WHO: 15 µg/m³")
+            r2.metric("PM10",  f"{aq['pm10']:.1f} µg/m³",help="WHO: 45 µg/m³")
+            r3.metric("NO₂",   f"{aq['no2']:.1f} µg/m³", help="WHO hourly: 200 µg/m³")
+            r4.metric("Ozone", f"{aq['o3']:.1f} µg/m³",  help="WHO 8hr: 100 µg/m³")
+            st.markdown("**Pollen Levels (grains/m³)**")
+            p1,p2,p3,p4=st.columns(4)
+            p1.metric("Birch",   f"{aq['birch']:.0f}")
+            p2.metric("Grass",   f"{aq['grass']:.0f}")
+            p3.metric("Mugwort", f"{aq['mugwort']:.0f}")
+            p4.metric("Alder",   f"{aq['alder']:.0f}")
+            st.caption("Pollen: 0–10 Low · 10–30 Moderate · 30–100 High · >100 Very High (grains/m³)")
 
-        # Air Quality
-        with c1t:
-            section_header("💨","Air Quality",
-                           "PM2.5 · PM10 · NO₂ · O₃ · CO · Dust · UV · Pollen (4 types) — Open-Meteo AQ API","#0891b2")
-            if not aq:
-                st.info("Air quality data unavailable for this location.")
-            else:
-                aqi_v=aq["aqi"]; albl,acol=aqi_label(aqi_v)
-                abg=("#fee2e2" if aqi_v>150 else "#fef3c7" if aqi_v>50 else "#dcfce7")
-                atx=("#991b1b" if aqi_v>150 else "#92400e" if aqi_v>50 else "#166534")
-                a,b,c,d=st.columns(4)
-                a.markdown(f'<div style="background:{abg};border-radius:10px;padding:12px;text-align:center;">'
-                           f'<div style="font-size:11px;color:#6b7280;">AQI (PM2.5 based)</div>'
-                           f'<div style="font-size:30px;font-weight:700;color:{acol}">{aqi_v}</div>'
-                           f'<div style="font-size:12px;color:{acol}">{albl}</div></div>',unsafe_allow_html=True)
-                b.metric("UV Index",  f"{aq['uv']:.1f}",
-                         help="<3 Low · 3-5 Moderate · 6-7 High · 8-10 Very High · 11+ Extreme")
-                c.metric("Dust",      f"{aq['dust']:.1f} µg/m³")
-                d.metric("CO",        f"{aq['co']:.0f} µg/m³", help="WHO 1hr: 30,000 µg/m³")
-
-                st.markdown("**Pollutants vs WHO Guidelines**")
-                st.plotly_chart(chart_air_quality(aq),use_container_width=True)
-
-                st.markdown("**Detailed Readings**")
-                r1c1,r1c2,r1c3,r1c4=st.columns(4)
-                r1c1.metric("PM2.5",  f"{aq['pm25']:.1f} µg/m³",   help="WHO: 15 µg/m³")
-                r1c2.metric("PM10",   f"{aq['pm10']:.1f} µg/m³",   help="WHO: 45 µg/m³")
-                r1c3.metric("NO₂",    f"{aq['no2']:.1f} µg/m³",    help="WHO hourly: 200 µg/m³")
-                r1c4.metric("Ozone",  f"{aq['o3']:.1f} µg/m³",     help="WHO 8hr: 100 µg/m³")
-
-                st.markdown("**Pollen Levels (grains/m³)**")
-                p1,p2,p3,p4=st.columns(4)
-                p1.metric("Birch",   f"{aq['birch']:.0f}")
-                p2.metric("Grass",   f"{aq['grass']:.0f}")
-                p3.metric("Mugwort", f"{aq['mugwort']:.0f}")
-                p4.metric("Alder",   f"{aq['alder']:.0f}")
-                st.caption("Pollen: 0–10 Low · 10–30 Moderate · 30–100 High · >100 Very High (grains/m³)")
-
-        # Wildfire
-        with c2t:
-            section_header("🔥","Wildfire Weather Index",
-                           "FWI-based scoring · Auto-flagged for arid / Mediterranean / boreal forest zones only","#dc2626")
-            hum_n=ow["humidity_pct"]; prec_n=om["now"].get("precipitation",0) or 0
-            wlvl,wflags,wcomp=score_wildfire(om["now"],lat,hum_n,prec_n,zone,elev)
-            if wlvl is None:
-                st.success(
-                    f"✅ **Not a wildfire-prone zone.**  \n"
-                    f"Climate zone detected: **{zone.title()}** · Humidity: **{hum_n}%**  \n"
-                    f"Location does not meet arid / Mediterranean / boreal forest criteria. "
-                    f"Wildfire monitoring is not applicable here.")
-            else:
-                a,b=st.columns([1,2])
-                with a: st.markdown(time_card("🔥 Fire Weather Now",wlvl,wflags,
-                                              f"Humidity: {hum_n}% · Precip: {prec_n:.1f}mm"),
-                                    unsafe_allow_html=True)
-                with b:
-                    if wcomp:
-                        st.markdown("**FWI Component Scores**")
-                        st.plotly_chart(chart_wildfire(wcomp),use_container_width=True)
-                st.warning("⚠️ FWI flags dangerous weather — not confirmed fire occurrence. "
-                           "Actual fire risk depends on land cover and ignition sources.")
-
-        # Agro Risk
-        with c3t:
-            section_header("🌾","Agrometeorological Risk Score",
-                           "Waterlogging · Wind lodging · Heat stress · Frost risk · VPD — no crop-specific warnings","#16a34a")
-            alvl,aflags,ascores=score_agro_risk(om["now"],lat,elev)
-            vpd=om["now"].get("vapour_pressure_deficit",0) or 0
-            a,b=st.columns([1,1])
-            with a:
-                st.markdown(time_card("🌾 Overall Agro Risk",alvl,aflags,"Current conditions"),
-                            unsafe_allow_html=True)
-                st.markdown("<br>",unsafe_allow_html=True)
-                r1,r2=st.columns(2)
-                r1.metric("Waterlogging",f"{ascores['Waterlogging']}/100")
-                r2.metric("Wind Lodging", f"{ascores['Wind Lodging']}/100")
-                r3,r4=st.columns(2)
-                r3.metric("Heat Stress",  f"{ascores['Heat Stress']}/100")
-                r4.metric("Frost Risk",   f"{ascores['Frost Risk']}/100")
-                vpdlbl=("Severe plant stress" if vpd>2.5 else
-                        "Moderate stress" if vpd>1.5 else "Within acceptable range")
-                st.info(f"💧 VPD: **{vpd:.2f} kPa** — {vpdlbl}")
+    with c2t:
+        section_header("🔥","Wildfire Weather Index",
+                       "FWI-based scoring · Auto-flagged for arid / Mediterranean / boreal zones only","#dc2626")
+        hum_n=ow["humidity_pct"]; prec_n=om["now"].get("precipitation",0) or 0
+        wlvl,wflags,wcomp=score_wildfire(om["now"],lat,hum_n,prec_n,zone,elev)
+        if wlvl is None:
+            st.success(
+                f"✅ **Not a wildfire-prone zone.**  \n"
+                f"Climate zone: **{zone.title()}** · Humidity: **{hum_n}%**  \n"
+                f"Location does not meet arid / Mediterranean / boreal forest criteria.")
+        else:
+            a,b=st.columns([1,2])
+            with a: st.markdown(time_card("🔥 Fire Weather Now",wlvl,wflags,
+                                          f"Humidity: {hum_n}% · Precip: {prec_n:.1f}mm"),
+                                unsafe_allow_html=True)
             with b:
-                st.markdown("**Stress Radar Chart**")
-                st.plotly_chart(chart_agro_radar(ascores),use_container_width=True)
+                if wcomp:
+                    st.markdown("**FWI Component Scores**")
+                    st.plotly_chart(chart_wildfire(wcomp),use_container_width=True)
+            st.warning("⚠️ FWI flags dangerous weather — not confirmed fire occurrence.")
 
-        # Soil & Drought
-        with c4t:
-            section_header("💧","Soil Moisture & Drought",
-                           "Current snapshot only — no time prediction · Surface: flood context · Deep: agriculture context","#1d4ed8")
-            soil=get_soil_context(om["now"])
+    with c3t:
+        section_header("🌾","Agrometeorological Risk Score",
+                       "Waterlogging · Wind lodging · Heat stress · Frost risk · VPD — no crop-specific warnings","#16a34a")
+        alvl,aflags,ascores=score_agro_risk(om["now"],lat,elev)
+        vpd=om["now"].get("vapour_pressure_deficit",0) or 0
+        a,b=st.columns([1,1])
+        with a:
+            st.markdown(time_card("🌾 Overall Agro Risk",alvl,aflags,"Current conditions"),
+                        unsafe_allow_html=True)
+            st.markdown("<br>",unsafe_allow_html=True)
+            r1,r2=st.columns(2)
+            r1.metric("Waterlogging",f"{ascores['Waterlogging']}/100")
+            r2.metric("Wind Lodging", f"{ascores['Wind Lodging']}/100")
+            r3,r4=st.columns(2)
+            r3.metric("Heat Stress",  f"{ascores['Heat Stress']}/100")
+            r4.metric("Frost Risk",   f"{ascores['Frost Risk']}/100")
+            vpdlbl=("Severe plant stress" if vpd>2.5 else
+                    "Moderate stress" if vpd>1.5 else "Within acceptable range")
+            st.info(f"💧 VPD: **{vpd:.2f} kPa** — {vpdlbl}")
+        with b:
+            st.markdown("**Stress Radar Chart**")
+            st.plotly_chart(chart_agro_radar(ascores),use_container_width=True)
 
-            st.markdown("**🌊 Surface (0–7cm) — Flood & Runoff Context**")
-            g1,g2,g3=st.columns([1,2,2])
-            with g1: st.plotly_chart(chart_soil_gauge(soil["surface"]["v"],"0–7cm"),use_container_width=True)
-            with g2: st.markdown(
-                f'<div style="background:#f0f9ff;border-radius:10px;padding:14px;margin-top:8px;">'
-                f'<div style="font-size:11px;color:#6b7280;margin-bottom:4px;">🌊 FLOOD</div>'
-                f'<div style="font-size:13px;font-weight:600;">{soil["surface"]["flood"]}</div>'
-                f'<div style="font-size:12px;color:#6b7280;margin-top:6px;">Value: {soil["surface"]["v"]:.3f} m³/m³</div>'
-                f'</div>',unsafe_allow_html=True)
-            with g3: st.markdown(
-                f'<div style="background:#f0fdf4;border-radius:10px;padding:14px;margin-top:8px;">'
-                f'<div style="font-size:11px;color:#6b7280;margin-bottom:4px;">🌱 AGRO</div>'
-                f'<div style="font-size:13px;font-weight:600;">{soil["surface"]["agro"]}</div>'
-                f'</div>',unsafe_allow_html=True)
+    with c4t:
+        section_header("💧","Soil Moisture & Drought",
+                       "Current snapshot only — Surface: flood context · Deep: agriculture context","#1d4ed8")
+        soil=get_soil_context(om["now"])
+        st.markdown("**🌊 Surface (0–7cm) — Flood & Runoff Context**")
+        g1,g2,g3=st.columns([1,2,2])
+        with g1: st.plotly_chart(chart_soil_gauge(soil["surface"]["v"],"0–7cm"),use_container_width=True)
+        with g2: st.markdown(
+            f'<div style="background:#f0f9ff;border-radius:10px;padding:14px;margin-top:8px;">'
+            f'<div style="font-size:11px;color:#6b7280;margin-bottom:4px;">🌊 FLOOD</div>'
+            f'<div style="font-size:13px;font-weight:600;">{soil["surface"]["flood"]}</div>'
+            f'<div style="font-size:12px;color:#6b7280;margin-top:6px;">Value: {soil["surface"]["v"]:.3f} m³/m³</div>'
+            f'</div>',unsafe_allow_html=True)
+        with g3: st.markdown(
+            f'<div style="background:#f0fdf4;border-radius:10px;padding:14px;margin-top:8px;">'
+            f'<div style="font-size:11px;color:#6b7280;margin-bottom:4px;">🌱 AGRO</div>'
+            f'<div style="font-size:13px;font-weight:600;">{soil["surface"]["agro"]}</div>'
+            f'</div>',unsafe_allow_html=True)
+        st.markdown("**🌱 Shallow Root Zone (7–28cm) — Crop Root Agriculture**")
+        g4,g5,_=st.columns([1,3,1])
+        with g4: st.plotly_chart(chart_soil_gauge(soil["shallow"]["v"],"7–28cm"),use_container_width=True)
+        with g5: st.markdown(
+            f'<div style="background:#f0fdf4;border-radius:10px;padding:14px;margin-top:8px;">'
+            f'<div style="font-size:11px;color:#6b7280;margin-bottom:4px;">🌱 AGRO</div>'
+            f'<div style="font-size:13px;font-weight:600;">{soil["shallow"]["agro"]}</div>'
+            f'<div style="font-size:12px;color:#6b7280;margin-top:6px;">Value: {soil["shallow"]["v"]:.3f} m³/m³</div>'
+            f'</div>',unsafe_allow_html=True)
+        st.markdown("**🏜 Deep Root Zone (28–100cm) — Drought & Deep Agriculture**")
+        g6,g7,_=st.columns([1,3,1])
+        with g6: st.plotly_chart(chart_soil_gauge(soil["deep"]["v"],"28–100cm"),use_container_width=True)
+        with g7: st.markdown(
+            f'<div style="background:#fefce8;border-radius:10px;padding:14px;margin-top:8px;">'
+            f'<div style="font-size:11px;color:#6b7280;margin-bottom:4px;">🏜 DROUGHT</div>'
+            f'<div style="font-size:13px;font-weight:600;">{soil["deep"]["agro"]}</div>'
+            f'<div style="font-size:12px;color:#6b7280;margin-top:6px;">Value: {soil["deep"]["v"]:.3f} m³/m³</div>'
+            f'</div>',unsafe_allow_html=True)
+        st.markdown("""
+        <div style="font-size:11px;color:#9ca3af;margin-top:14px;">
+        Soil scale: <span style="color:#f59e0b">■ 0–0.10 Very dry</span> &nbsp;
+        <span style="color:#22c55e">■ 0.10–0.25 Optimal</span> &nbsp;
+        <span style="color:#3b82f6">■ 0.25–0.38 Wet</span> &nbsp;
+        <span style="color:#ef4444">■ 0.38+ Saturated / flood risk</span>
+        </div>""",unsafe_allow_html=True)
 
-            st.markdown("**🌱 Shallow Root Zone (7–28cm) — Crop Root Agriculture**")
-            g4,g5,_=st.columns([1,3,1])
-            with g4: st.plotly_chart(chart_soil_gauge(soil["shallow"]["v"],"7–28cm"),use_container_width=True)
-            with g5: st.markdown(
-                f'<div style="background:#f0fdf4;border-radius:10px;padding:14px;margin-top:8px;">'
-                f'<div style="font-size:11px;color:#6b7280;margin-bottom:4px;">🌱 AGRO</div>'
-                f'<div style="font-size:13px;font-weight:600;">{soil["shallow"]["agro"]}</div>'
-                f'<div style="font-size:12px;color:#6b7280;margin-top:6px;">Value: {soil["shallow"]["v"]:.3f} m³/m³</div>'
-                f'</div>',unsafe_allow_html=True)
-
-            st.markdown("**🏜 Deep Root Zone (28–100cm) — Drought & Deep Agriculture**")
-            g6,g7,_=st.columns([1,3,1])
-            with g6: st.plotly_chart(chart_soil_gauge(soil["deep"]["v"],"28–100cm"),use_container_width=True)
-            with g7: st.markdown(
-                f'<div style="background:#fefce8;border-radius:10px;padding:14px;margin-top:8px;">'
-                f'<div style="font-size:11px;color:#6b7280;margin-bottom:4px;">🏜 DROUGHT</div>'
-                f'<div style="font-size:13px;font-weight:600;">{soil["deep"]["agro"]}</div>'
-                f'<div style="font-size:12px;color:#6b7280;margin-top:6px;">Value: {soil["deep"]["v"]:.3f} m³/m³</div>'
-                f'</div>',unsafe_allow_html=True)
-
-            st.markdown("""
-            <div style="font-size:11px;color:#9ca3af;margin-top:14px;">
-            Soil scale: <span style="color:#f59e0b">■ 0–0.10 Very dry</span> &nbsp;
-            <span style="color:#22c55e">■ 0.10–0.25 Optimal</span> &nbsp;
-            <span style="color:#3b82f6">■ 0.25–0.38 Wet</span> &nbsp;
-            <span style="color:#ef4444">■ 0.38+ Saturated / flood risk</span>
-            </div>""",unsafe_allow_html=True)
-
-        st.divider()
-
+    st.divider()
     st.caption(
         f"Updated: {datetime.now().strftime('%d %b %Y, %H:%M')} · "
         "OpenWeatherMap (current) · Open-Meteo Forecast + Air Quality (free) · "
