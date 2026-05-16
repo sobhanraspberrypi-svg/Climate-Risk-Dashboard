@@ -146,6 +146,8 @@ flash-rainfall-predictor/
 - Stull, R. (2011) — wet bulb temperature approximation formula
 
 ---
+## Link to DashBoard
+https://climate-intelligence-dashboard.streamlit.app/
 
 ## License
 
