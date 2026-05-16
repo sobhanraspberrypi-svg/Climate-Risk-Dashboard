@@ -1,4 +1,4 @@
-# 🌧️ Flash Rainfall Predictor
+# 🌧️ Climate Analytics (Weather info plus Climate Intelligence )
 
 > Real-time weather risk monitor for **Storm Rainfall, Flash Rain, Cloudburst, Snow and Hail** — any city, worldwide.
 
