@@ -1,5 +1,5 @@
 """
-Vatavaram Drusti — వాతావరణ దృష్టి
+Vatavaram Drusti — ବାତାବରଣ ଦୃଷ୍ଟି
 Atmospheric Vision | Full-spectrum weather & climate hazard monitor
 Run: streamlit run app.py
 """
